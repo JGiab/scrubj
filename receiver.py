@@ -14,20 +14,23 @@ def dbhandle(uri, user, password):
 def dbclose(driver):
     driver.close()
 
-def create_node(driver, loc, fname, ftype, argument_types):
+def create_node(driver, loc, fname, ftype, argument_types, project_name):
     with driver.session() as session:
         tx = session.begin_transaction()
-        create_function_node(tx, loc, fname, ftype, argument_types)
+        create_function_node(tx, loc, fname, ftype, argument_types, project_name)
         tx.commit()
 
 
-def create_function_node(tx, loc, fname, ftype, argument_types):
+def create_function_node(tx, loc, fname, ftype, argument_types, project_name):
     tx.run("MERGE (n:function {loc:{loc}, name:{fname}}) \
             ON CREATE SET n.type = {ftype}, \
-            n.argument_types = {argument_types} \
+            n.argument_types = {argument_types}, \
+            n.project_name = {project_name} \
             ON MATCH SET n.type = {ftype}, \
-            n.argument_types = {argument_types}", loc=loc,
-            fname=fname, ftype=ftype, argument_types=argument_types)
+            n.argument_types = {argument_types}, \
+            n.project_name = {project_name}", loc=loc,
+            fname=fname, ftype=ftype, argument_types=argument_types,
+            project_name=project_name)
 
             #type:{ftype}, \
             #argument_types:{argument_types}})",
@@ -82,6 +85,9 @@ def main():
     restr = r'(.+)(\@)(.+)'
     rexp = re.compile(restr)
 
+    # TODO: Add here project name input and add it in the db nodes
+    project_name = input("Enter the project name: ")
+
 
     while True:
         try:
@@ -118,7 +124,8 @@ def main():
 
         if m1:
             create_node(db, str(m1.group(3)), str(m1.group(1)),
-                str(temp['parent_type']), str(temp['parent_argument_types']))
+                str(temp['parent_type']), str(temp['parent_argument_types']),
+                project_name)
 
         for callee in temp['callees']:
             m2 = rexp.search(str(callee))
@@ -127,6 +134,7 @@ def main():
                 create_callee_node(db, str(m2.group(3)), str(m2.group(1)),
                         str(m1.group(1)), str(m1.group(3)))
 
+        """
         for caller in temp['callers']:
             m3 = rexp.search(str(callee))
 
@@ -134,7 +142,7 @@ def main():
                 create_caller_edge(db, str(m3.group(3)), str(m3.group(1)),
                         str(m1.group(1)), str(m1.group(3)))
 
-
+        """
 
 
     dbclose(db)
