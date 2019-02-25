@@ -14,6 +14,17 @@ def dbhandle(uri, user, password):
 def dbclose(driver):
     driver.close()
 
+def create_project(driver, project_name):
+    with driver.session() as session:
+        tx = session.begin_transaction()
+        create_project_node(tx, project_name)
+        tx.commit()
+
+def create_project_node(tx, project_name):
+    tx.run("CREATE (p:project {name:{project_name}})",
+            project_name=project_name)
+
+
 def create_node(driver, loc, fname, ftype, argument_types, project_name):
     with driver.session() as session:
         tx = session.begin_transaction()
@@ -27,17 +38,16 @@ def create_function_node(tx, loc, fname, ftype, argument_types, project_name):
             n.argument_types = {argument_types}, \
             n.project_name = {project_name} \
             ON MATCH SET n.type = {ftype}, \
-            n.argument_types = {argument_types}, \
-            n.project_name = {project_name}", loc=loc,
+            n.argument_types = {argument_types} \
+            WITH n \
+            MATCH (n:function),(p:project) \
+            WHERE n.name={fname} AND p.name={project_name} \
+            CREATE (n)-[r:BELONGS_IN_]->(p)", loc=loc,
             fname=fname, ftype=ftype, argument_types=argument_types,
             project_name=project_name)
 
-            #type:{ftype}, \
-            #argument_types:{argument_types}})",
-            #{"loc":loc, "fname":fname, "ftype":ftype, \
-            #"argument_types":argument_types})
 
-
+"""
 def create_callee_node(driver, loc, fname, parent_name, parent_loc):
     with driver.session() as session:
         tx = session.begin_transaction()
@@ -64,6 +74,7 @@ def create_caller_function(tx, loc, fname, callee_name, callee_loc):
             CREATE (n)-[:IS_CALLED_BY]->(f)",
             callee_name=callee_name, callee_loc=callee_loc, loc=loc, fname=fname)
 
+"""
 
 # Zeromq PUB-SUB functions
 def connect():
@@ -113,7 +124,10 @@ def main():
             break
 
     # Add your uri, user and password
-    db = dbhandle("uri", "user", "password")
+    db = dbhandle("bolt://192.168.56.101:7687", "neo4j", "Areyouneo4jr3dy!")
+
+    # Create project node
+    create_project(db, project_name)
 
     for key in master:
         temp = master[key]
@@ -127,6 +141,7 @@ def main():
                 str(temp['parent_type']), str(temp['parent_argument_types']),
                 project_name)
 
+        """
         for callee in temp['callees']:
             m2 = rexp.search(str(callee))
 
@@ -134,7 +149,7 @@ def main():
                 create_callee_node(db, str(m2.group(3)), str(m2.group(1)),
                         str(m1.group(1)), str(m1.group(3)))
 
-        """
+
         for caller in temp['callers']:
             m3 = rexp.search(str(callee))
 
