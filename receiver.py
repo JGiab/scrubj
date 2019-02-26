@@ -33,30 +33,40 @@ def create_node(driver, loc, fname, ftype, argument_types, project_name):
 
 
 def create_function_node(tx, loc, fname, ftype, argument_types, project_name):
-    tx.run("MERGE (n:function {loc:{loc}, name:{fname}}) \
+    tx.run("MERGE (n:function:parent {loc:{loc}, name:{fname}}) \
             ON CREATE SET n.type = {ftype}, \
             n.argument_types = {argument_types} \
             ON MATCH SET n.type = {ftype}, \
             n.argument_types = {argument_types} \
             WITH n \
-            MATCH (n:function),(p:project) \
+            MATCH (n:function:parent), (p:project) \
             WHERE n.name={fname} AND p.name={project_name} \
-            CREATE (n)-[r:IN_PROJECT]->(p)", loc=loc,
+            MERGE (n)-[r:IN_PROJECT]->(p)", loc=loc,
             fname=fname, ftype=ftype, argument_types=argument_types,
             project_name=project_name)
 
 
 
-def create_callee_node(driver, loc, fname, parent_name, parent_loc):
+def create_callee_node(driver, loc, fname, parent_name, parent_loc, project_name):
     with driver.session() as session:
         tx = session.begin_transaction()
-        create_callee_function(tx, loc, fname, parent_name, parent_loc)
+        create_callee_function(tx, loc, fname, parent_name, parent_loc, project_name)
         tx.commit()
 
-def create_callee_function(tx, loc, fname, parent_name, parent_loc):
-    tx.run("MATCH (f:function) WHERE f.name={parent_name} AND f.loc={parent_loc} \
-            MERGE (n:function {loc:{loc}, name:{fname}})<-[:CALLS]-(f)",
-            parent_name=parent_name, parent_loc=parent_loc, loc=loc, fname=fname)
+def create_callee_function(tx, loc, fname, parent_name, parent_loc, project_name):
+    tx.run("MATCH (f:function:parent) \
+            WHERE f.name={parent_name} AND f.loc={parent_loc} \
+            MERGE (n:function:callee {loc:{loc}, name:{fname}}) \
+            WITH n \
+            MATCH (n:function:callee), (p:project) \
+            WHERE n.name={fname} AND p.name={project_name} \
+            MERGE (n)-[r:IN_PROJECT]->(p) \
+            WITH n \
+            MATCH (f:function:parent),(n:function:callee) \
+            WHERE f.name={parent_name} AND n.name={fname} \
+            MERGE (f)-[r:CALLS]->(n)",
+            parent_name=parent_name, parent_loc=parent_loc, loc=loc,
+            fname=fname, project_name=project_name)
 
 
 """
@@ -140,14 +150,15 @@ def main():
                 str(temp['parent_type']), str(temp['parent_argument_types']),
                 project_name)
 
-        """
+
         for callee in temp['callees']:
             m2 = rexp.search(str(callee))
 
             if m2:
                 create_callee_node(db, str(m2.group(3)), str(m2.group(1)),
-                        str(m1.group(1)), str(m1.group(3)))
+                        str(m1.group(1)), str(m1.group(3)), project_name)
 
+        """
 
         for caller in temp['callers']:
             m3 = rexp.search(str(callee))
