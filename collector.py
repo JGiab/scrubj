@@ -121,6 +121,7 @@ def on_pass_execution(p, fn):
             data['parent_argument_types'] = parent_types_list
 
 
+            """
             print("IN FUNCTION:")
             print(parent)
             print("WHICH TYPE IS:")
@@ -132,6 +133,7 @@ def on_pass_execution(p, fn):
             print("AND IS CALLED BY")
             print(callers_list)
             print("ALL FUNCTION CALLS")
+            """
 
 
             try:
@@ -147,18 +149,18 @@ def on_pass_execution(p, fn):
                                         + '@' + str(stmt.loc.file) \
                                         + '_L' + str(stmt.loc.line) + '_C' \
                                         + str(stmt.loc.column)
-                                print(fname)
+                                #print(fname)
                             elif fnmatch2:
                                 fname = str(unfold(tvars, fnmatch2.group())) \
                                         + '@' + str(stmt.loc.file) \
                                         + '_L' + str(stmt.loc.line) + '_C' \
                                         + str(stmt.loc.column)
-                                print(fname)
+                                #print(fname)
                             else:
                                 fname = str(stmt.fn) + '@' + str(stmt.loc.file) \
                                         + '_L' + str(stmt.loc.line) + '_C' \
                                         + str(stmt.loc.column)
-                                print(fname)
+                                #print(fname)
 
                             for i, arg in enumerate(stmt.args):
                                 m1 = rexp1.search(str(stmt.args[i]))
@@ -169,11 +171,11 @@ def on_pass_execution(p, fn):
                                     arguments[i] = unfold(tvars, m2.group())
                                 else:
                                     arguments[i] = str(stmt.args[i])
-                            print(arguments)
+                            #print(arguments)
                             data[fname] = arguments
                             arguments = {}
 
-                print("----------------------------------")
+                #print("----------------------------------")
             except AttributeError:
                 continue
 

@@ -35,19 +35,18 @@ def create_node(driver, loc, fname, ftype, argument_types, project_name):
 def create_function_node(tx, loc, fname, ftype, argument_types, project_name):
     tx.run("MERGE (n:function {loc:{loc}, name:{fname}}) \
             ON CREATE SET n.type = {ftype}, \
-            n.argument_types = {argument_types}, \
-            n.project_name = {project_name} \
+            n.argument_types = {argument_types} \
             ON MATCH SET n.type = {ftype}, \
             n.argument_types = {argument_types} \
             WITH n \
             MATCH (n:function),(p:project) \
             WHERE n.name={fname} AND p.name={project_name} \
-            CREATE (n)-[r:BELONGS_IN_]->(p)", loc=loc,
+            CREATE (n)-[r:IN_PROJECT]->(p)", loc=loc,
             fname=fname, ftype=ftype, argument_types=argument_types,
             project_name=project_name)
 
 
-"""
+
 def create_callee_node(driver, loc, fname, parent_name, parent_loc):
     with driver.session() as session:
         tx = session.begin_transaction()
@@ -60,7 +59,7 @@ def create_callee_function(tx, loc, fname, parent_name, parent_loc):
             parent_name=parent_name, parent_loc=parent_loc, loc=loc, fname=fname)
 
 
-
+"""
 def create_caller_edge(driver, loc, fname, callee_name, callee_loc):
     with driver.session() as session:
         tx = session.begin_transaction()
