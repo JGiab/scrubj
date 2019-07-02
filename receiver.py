@@ -47,13 +47,13 @@ def create_function_node(tx, loc, fname, ftype, argument_types, project_name):
 
 
 
-def create_callee_node(driver, loc, fname, parent_name, parent_loc, project_name):
+def create_callee_node(driver, loc, fname, parent_name, parent_loc, arg_list, project_name):
     with driver.session() as session:
         tx = session.begin_transaction()
-        create_callee_function(tx, loc, fname, parent_name, parent_loc, project_name)
+        create_callee_function(tx, loc, fname, parent_name, parent_loc, arg_list, project_name)
         tx.commit()
 
-def create_callee_function(tx, loc, fname, parent_name, parent_loc, project_name):
+def create_callee_function(tx, loc, fname, parent_name, parent_loc, arg_list, project_name):
     tx.run("MATCH (f:function:parent) \
             WHERE f.name={parent_name} AND f.loc={parent_loc} \
             MERGE (n:function:callee {loc:{loc}, name:{fname}}) \
@@ -64,9 +64,9 @@ def create_callee_function(tx, loc, fname, parent_name, parent_loc, project_name
             WITH n \
             MATCH (f:function:parent),(n:function:callee) \
             WHERE f.name={parent_name} AND n.name={fname} \
-            MERGE (f)-[r:CALLS]->(n)",
+            MERGE (f)-[r:CALLS {arguments:{arg_list}}]->(n)",
             parent_name=parent_name, parent_loc=parent_loc, loc=loc,
-            fname=fname, project_name=project_name)
+            fname=fname, arg_list=arg_list, project_name=project_name)
 
 
 """
@@ -82,7 +82,6 @@ def create_caller_function(tx, loc, fname, callee_name, callee_loc):
             MATCH (n:function) WHERE n.name={fname} AND n.loc={loc} \
             CREATE (n)-[:IS_CALLED_BY]->(f)",
             callee_name=callee_name, callee_loc=callee_loc, loc=loc, fname=fname)
-
 """
 
 # Zeromq PUB-SUB functions
@@ -101,6 +100,7 @@ def main():
     subscriber = connect()
     count = 0
     gcc_disconnect = False
+    arg_list = []
     master = {}
     restr = r'(.+)(\@)(.+)'
     rexp = re.compile(restr)
@@ -113,8 +113,8 @@ def main():
         try:
             msg = subscriber.recv()
             if msg == b"GCC_DISCONNECT":
-                if gcc_disconnect == False: # When 2000ms pass without receive
-                    subscriber.RCVTIMEO = 2000 # the conn will close
+                if gcc_disconnect == False: # When ms pass without receive
+                    subscriber.RCVTIMEO = 300000 # the conn will close
                     gcc_disconnect = True # find alternative when possible
                 else:
                     continue
@@ -142,7 +142,7 @@ def main():
         temp = master[key]
         m1 = rexp.search(str(temp['parent']))
         #print(str(m.group(3))) this is the loc
-        #print(str(m.group(1)))
+        #print(str(m.group(1))) this is the fname
         #print(str(temp['parent_type']))
 
         if m1:
@@ -154,9 +154,19 @@ def main():
         for callee in temp['callees']:
             m2 = rexp.search(str(callee))
 
+            try:
+                for arg in temp[callee].values():
+                    arg_list.append(arg)
+            except KeyError:
+                arg_list.append("no_args")
+
+
             if m2:
                 create_callee_node(db, str(m2.group(3)), str(m2.group(1)),
-                        str(m1.group(1)), str(m1.group(3)), project_name)
+                        str(m1.group(1)), str(m1.group(3)),
+                        arg_list, project_name)
+                del arg_list[:]
+
 
         """
 

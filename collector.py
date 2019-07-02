@@ -31,9 +31,10 @@ def unfold(tvars, temp_var):
         return 'Error_arg'
 
     while True:
-        m1 = rexp1.search(argument)
+        m1 = rexp1.search(argument) # Here is the prob
         m2 = rexp2.search(argument)
-        if (m1 == None and m2 == None):
+
+        if(m1 == None and m2 == None):
             break
 
         if m1:
@@ -89,37 +90,39 @@ def on_pass_execution(p, fn):
 
         for node in gcc.get_callgraph_nodes():
 
-            fn = node.decl.function
-            cl = node.callees
-            cr = node.callers
+            try:
+                fn = node.decl.function
+                cl = node.callees
+                cr = node.callers
 
-            parent = str(fn.decl.name) + '@' + str(fn.decl.location.file) \
-                    + '_L' + str(fn.decl.location.line) + '_C' \
-                    + str(fn.decl.location.column)
-            data['parent'] = parent
+                parent = str(fn.decl.name) + '@' + str(fn.decl.location.file) \
+                        + '_L' + str(fn.decl.location.line) + '_C' \
+                        + str(fn.decl.location.column)
+                data['parent'] = parent
 
-            parent_type = str(fn.decl.type.type)
-            data['parent_type'] = parent_type
+                parent_type = str(fn.decl.type.type)
+                data['parent_type'] = parent_type
 
-            for edge in cl:
-                callees_list.append(str(edge.call_stmt.fn) + '@' \
-                        + str(edge.call_stmt.loc.file) + '_L' \
-                        + str(edge.call_stmt.loc.line) + '_C' \
-                        + str(edge.call_stmt.loc.column))
-            data['callees'] = callees_list
+                for edge in cl:
+                    callees_list.append(str(edge.call_stmt.fn) + '@' \
+                            + str(edge.call_stmt.loc.file) + '_L' \
+                            + str(edge.call_stmt.loc.line) + '_C' \
+                            + str(edge.call_stmt.loc.column))
+                data['callees'] = callees_list
 
-            for edge in cr:
-                callers_list.append(str(edge.caller.decl.name) + '@' \
-                        + str(edge.caller.decl.location.file) + '_L' \
-                        + str(edge.caller.decl.location.line) + '_C' \
-                        + str(edge.caller.decl.location.column))
-            data['callers'] = callers_list
+                for edge in cr:
+                    callers_list.append(str(edge.caller.decl.name) + '@' \
+                            + str(edge.caller.decl.location.file) + '_L' \
+                            + str(edge.caller.decl.location.line) + '_C' \
+                            + str(edge.caller.decl.location.column))
+                data['callers'] = callers_list
 
-            for arg in fn.decl.type.argument_types:
-                parent_types_list.append(str(arg))
+                for arg in fn.decl.type.argument_types:
+                    parent_types_list.append(str(arg))
 
-            data['parent_argument_types'] = parent_types_list
-
+                data['parent_argument_types'] = parent_types_list
+            except AttributeError:
+                continue
 
             """
             print("IN FUNCTION:")
